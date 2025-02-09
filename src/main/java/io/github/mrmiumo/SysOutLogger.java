@@ -6,6 +6,12 @@ package io.github.mrmiumo;
  */
 public class SysOutLogger implements BasicLogger {
 
+    /**
+     * Creates a new logger that only use standard output. Can be
+     * useful if no longer is provided or during development.
+     */
+    public SysOutLogger() {}
+
     @Override
     public void info(String message) {
         System.out.println("[INFO]  - " + message);

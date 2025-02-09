@@ -178,6 +178,19 @@ class InterProcessCommunication implements AutoCloseable {
     }
     
     /**
+     * Reads the content of the IPC file if existing.
+     * This method is intended to be used only to read the information
+     * of the windows leaved after the browser closed itself
+     * @return the content of the file or null if not found
+     * @throws IOException if an error occurs while reading the file
+     */
+    public String read() throws IOException {
+        if (!Files.exists(file)) return null;
+        var body = Files.readString(file);
+        return body.startsWith("> ") ? body.substring(2) : body;
+    }
+
+    /**
      * Blocking method that waits for the ipc file to be updated with
      * a value starting by "> " and returns the value after that prefix
      * @param watcher the watcher initialized before the creation of

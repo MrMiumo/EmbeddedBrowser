@@ -6,15 +6,43 @@
 
     <groupId>io.github.mrmiumo</groupId>
     <artifactId>embeddedbrowser</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <name>${project.groupId}:${project.artifactId}</name>
     <description>Tauri based standalone browser for Java applications</description>
-    <url>https://github.com/MrMiumo/Update4J-Core</url>
-    <inceptionYear>2024</inceptionYear>
+    <url>https://github.com/MrMiumo/EmbeddedBrowser</url>
+    <inceptionYear>2025</inceptionYear>
     <packaging>jar</packaging>
     <organization>
         <name>Miumo</name>
     </organization>
+    
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Miumo</name>
+            <email>miumo.contact@gmail.com</email>
+            <url>https://github.com/MrMiumo</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/MrMiumo/Update4J-Core.git</connection>
+        <developerConnection>scm:git:ssh://github.com:MrMiumo/Update4J-Core.git</developerConnection>
+        <url>http://github.com/MrMiumo/Update4J-Core</url>
+    </scm>
+
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+    </distributionManagement>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

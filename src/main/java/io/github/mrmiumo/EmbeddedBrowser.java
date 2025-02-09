@@ -20,6 +20,9 @@ public class EmbeddedBrowser {
     /** Channel to communicate with the browser */
     private final InterProcessCommunication ipc;
 
+    /** Saved size when the window was closed */
+    private Size onExitSize = null;
+
     /**
      * Creates a new Browser that uses the given directory to deploy
      * the app while it's working.
@@ -52,6 +55,7 @@ public class EmbeddedBrowser {
     void onExit(Consumer<? super Process> action) {
         process.onExit().thenAccept(p -> {
             try {
+                onExitSize = Size.from(ipc.read()).orElse(null);
                 ipc.close();
             } catch (Exception e) {
                 logger.error("Unexpected error while closing IPC: " + e);
@@ -111,6 +115,7 @@ public class EmbeddedBrowser {
      * @return the size of the window
      */
     public Optional<Size> getSize() {
+        if (onExitSize != null) return Optional.of(onExitSize);
         try {
             return Size.from(ipc.query("-gs"));
         } catch (IOException e) {
@@ -229,19 +234,29 @@ public class EmbeddedBrowser {
 
         /**
          * Parses the given string to create a Size object from it.
-         * A valid string to parse with the "," separator is like "123,456"
+         * A valid string to parse with the " " separator is like "123 456"
          * @param s the string to parse without spaces
          * @return the size, or empty if invalid
          */
         public static Optional<Size> from(String s) {
             if (s == null) return Optional.empty();
-            var split = s.split(",");
+            var split = s.split(" ");
             if (split.length != 2) return Optional.empty();
             try {
                 return Optional.of(new Size(Integer.valueOf(split[0]), Integer.valueOf(split[1])));
             } catch (NumberFormatException e) {
                 return Optional.empty();
             }
+        }
+    
+        /**
+         * Parses the given string to create a Size object from it.
+         * Acts the same as `from(s).orElse(null)`
+         * @param s the string to parse without spaces
+         * @return the size, or null if invalid
+         */
+        public static Size valueOf(String s) {
+            return from(s).orElse(null);
         }
     
         @Override

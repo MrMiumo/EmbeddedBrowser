@@ -84,6 +84,17 @@ public class EmbeddedBrowserBuilder {
     }
 
     /**
+     * Sets the size of the window when it shows up. This size can
+     * then be changed by the user if min-size and max-size allows it.
+     * @param size the width and height of the window in pixels
+     * @return this builder
+     */
+    public EmbeddedBrowserBuilder setSize(Size size) {
+        this.size = Objects.requireNonNull(size);
+        return this;
+    }
+
+    /**
      * Sets the maximal size that the window cannot overpass. If these
      * values are lower than the one defined with {@link #setSize},
      * the result will be unknown.
@@ -98,6 +109,19 @@ public class EmbeddedBrowserBuilder {
     }
 
     /**
+     * Sets the maximal size that the window cannot overpass. If these
+     * values are lower than the one defined with {@link #setSize},
+     * the result will be unknown.
+     * By default, no maximum limit is set.
+     * @param size the maximal width and height of the window in pixels
+     * @return this builder
+     */
+    public EmbeddedBrowserBuilder setMaxSize(Size size) {
+        maxSize = Objects.requireNonNull(size);
+        return this;
+    }
+
+    /**
      * Sets the minimal size that the window cannot underpass. If these
      * values are lower than the one defined with {@link #setSize},
      * the result will be unknown.
@@ -108,6 +132,19 @@ public class EmbeddedBrowserBuilder {
      */
     public EmbeddedBrowserBuilder setMinSize(int width, int height) {
         minSize = new Size(width, height);
+        return this;
+    }
+
+    /**
+     * Sets the minimal size that the window cannot underpass. If these
+     * values are lower than the one defined with {@link #setSize},
+     * the result will be unknown.
+     * By default, no minimum limit is set.
+     * @param size the minimum width and height of the window in pixels
+     * @return this builder
+     */
+    public EmbeddedBrowserBuilder setMinSize(Size size) {
+        minSize = Objects.requireNonNull(size);
         return this;
     }
 
