@@ -68,7 +68,7 @@ public class EmbeddedBrowserManager implements AutoCloseable {
      * @return a builder to fully configure the window
      */
     public EmbeddedBrowserBuilder newWindow(String title, String url) {
-        return new EmbeddedBrowserBuilder(this, title, url);
+        return new EmbeddedBrowserBuilder(this, logger, title, url);
     }
 
     /**

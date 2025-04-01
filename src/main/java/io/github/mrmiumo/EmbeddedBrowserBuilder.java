@@ -3,13 +3,15 @@ package io.github.mrmiumo;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Objects;
-
-import io.github.mrmiumo.EmbeddedBrowser.Size;
+import java.util.Optional;
 
 /**
  * Builder used to configure EmbeddedBrowser window.
  */
 public class EmbeddedBrowserBuilder {
+
+    /** Logger of the builder */
+    private final BasicLogger logger;
 
     /** Parent manager to get process from */
     private final EmbeddedBrowserManager manager;
@@ -38,8 +40,9 @@ public class EmbeddedBrowserBuilder {
     /** Minimal allowed size of the window */
     private Size minSize;
 
-    EmbeddedBrowserBuilder(EmbeddedBrowserManager manager, String title, String url) {
+    EmbeddedBrowserBuilder(EmbeddedBrowserManager manager, BasicLogger logger, String title, String url) {
         this.manager = Objects.requireNonNull(manager);
+        this.logger = Objects.requireNonNull(logger);
         this.title = Objects.requireNonNull(title);
         this.url = Objects.requireNonNull(url);
         this.pid = ProcessHandle.current().pid();
@@ -153,6 +156,8 @@ public class EmbeddedBrowserBuilder {
      * @return the browser object linked with the window
      */
     public EmbeddedBrowser display() {
+        size = size.coerce(minSize, maxSize);
+
         var args = new ArrayList<String>();
         args.add("-t");
         args.add(title);
@@ -188,6 +193,35 @@ public class EmbeddedBrowserBuilder {
             args.add(minSize.height() + "");
         }
 
-        return manager.newWindow(args);
+        var browser = manager.newWindow(args);
+        assertSize(browser, size);
+        return browser;
+    }
+
+    /**
+     * Makes sure the window size is the one expected once displayed.
+     * This enable to prevent a bug where the window weirdly have a
+     * 0x0 size.
+     * @param browser the browser to assert the size
+     * @param expected the expected size 
+     */
+    private void assertSize(EmbeddedBrowser browser, Size expected) {
+        try {
+            int retry = 300; // 300 * 50 = 15 seconds
+            Optional<Size> size;
+            while ((size = browser.getSize()).isEmpty() && retry-- > 0) {
+                Thread.sleep(50);
+            }
+            if (retry <= 0) {
+                logger.error("Size control failed: timeout");
+                return;
+            }
+            if (!size.get().equals(expected)) {
+                logger.info("Size control corrected the window size to " + expected);
+                browser.setSize(expected);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 }
