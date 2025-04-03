@@ -32,7 +32,7 @@ public class EmbeddedBrowserBuilder {
     private Path icon;
 
     /** Size in pixels of the window */
-    private Size size;
+    private Size size = new Size(1100, 600);
     
     /** Maximum allowed size of the window */
     private Size maxSize;
@@ -175,11 +175,9 @@ public class EmbeddedBrowserBuilder {
             args.add(icon.toAbsolutePath().toString());
         }
 
-        if (size != null) {
-            args.add("-s");
-            args.add(size.width() + "");
-            args.add(size.height() + "");
-        }
+        args.add("-s");
+        args.add(size.width() + "");
+        args.add(size.height() + "");
 
         if (maxSize != null) {
             args.add("-max");
@@ -219,6 +217,12 @@ public class EmbeddedBrowserBuilder {
             if (!size.get().equals(expected)) {
                 logger.info("Size control corrected the window size to " + expected);
                 browser.setSize(expected);
+            } else if (expected == null) {
+                var coerced = size.get().coerce(null, null);
+                if (!coerced.equals(size.get())) {
+                    logger.info("Size control corrected the window size to " + coerced);
+                    browser.setSize(coerced);
+                }
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
