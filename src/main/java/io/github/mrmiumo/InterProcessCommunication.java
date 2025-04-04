@@ -234,9 +234,14 @@ class InterProcessCommunication implements AutoCloseable {
         var workingDir = Path.of("C:/Users/aurel/Documents/MineDisney/Code/EmbeddedBrowser");
         var manager = EmbeddedBrowserManager.getManager(workingDir, new SysOutLogger());
 
-        var browser = manager.newWindow("Test IPC", "http://localhost:45000").display();
+        var browser = manager.newWindow("Test IPC", "https://google.fr")
+            .setMinSize(new Size(680, 320))
+            .setSize(new Size(680, 320))
+            .setVisible(true)
+            .start();
         System.out.println("IPC ready: " + browser.waitForReady(10000));
         
+        Thread.sleep(5000);
         var last = "";
         var count = 0;
         while (browser.isAlive()) {
@@ -246,7 +251,6 @@ class InterProcessCommunication implements AutoCloseable {
                 last = response;
             }
             count++;
-            // Thread.sleep(4000);
         }
         manager.close();
     }

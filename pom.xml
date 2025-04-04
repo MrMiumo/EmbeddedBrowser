@@ -6,7 +6,7 @@
 
     <groupId>io.github.mrmiumo</groupId>
     <artifactId>embeddedbrowser</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.2</version>
     <name>${project.groupId}:${project.artifactId}</name>
     <description>Tauri based standalone browser for Java applications</description>
     <url>https://github.com/MrMiumo/EmbeddedBrowser</url>

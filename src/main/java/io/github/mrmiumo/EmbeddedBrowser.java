@@ -152,6 +152,34 @@ public class EmbeddedBrowser {
     }
 
     /**
+     * Make the window visible.
+     * This will have no effect if the window was already visible.
+     * @return false in case of failure, true otherwise
+     */
+    public boolean show() {
+        try {
+            return isOk(ipc.query("-v true"));
+        } catch (IOException e) {
+            logger.error("Failed to show window: " + e);
+            return false;
+        }
+    }
+
+    /**
+     * Make the window invisible (even in the task bar).
+     * This will have no effect if the window was already hidden.
+     * @return false in case of failure, true otherwise
+     */
+    public boolean hide() {
+        try {
+            return isOk(ipc.query("-v false"));
+        } catch (IOException e) {
+            logger.error("Failed to hide window: " + e);
+            return false;
+        }
+    }
+
+    /**
      * Changes the title of this browser window
      * @param title the new name of the window
      * @return false in case of failure, true otherwise

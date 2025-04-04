@@ -26,7 +26,10 @@ public class EmbeddedBrowserBuilder {
     private final long pid;
 
     /** Whether or not to display the window always on top */
-    private Boolean pin = null;
+    private boolean pin = false;
+
+    /** Whether or not to display the window */
+    private boolean visible = true;
 
     /** Path of the icon of the browser */
     private Path icon;
@@ -56,6 +59,17 @@ public class EmbeddedBrowserBuilder {
      */
     public EmbeddedBrowserBuilder setAlwaysOnTop(boolean pin) {
         this.pin = pin;
+        return this;
+    }
+
+    /**
+     * Display the window or not.
+     * Default value: true
+     * @param visible true to make the window visible
+     * @return this builder
+     */
+    public EmbeddedBrowserBuilder setVisible(boolean visible) {
+        this.visible = visible;
         return this;
     }
 
@@ -155,7 +169,7 @@ public class EmbeddedBrowserBuilder {
      * Opens a new window configured with the previously given values.
      * @return the browser object linked with the window
      */
-    public EmbeddedBrowser display() {
+    public EmbeddedBrowser start() {
         size = size.coerce(minSize, maxSize);
 
         var args = new ArrayList<String>();
@@ -168,7 +182,9 @@ public class EmbeddedBrowserBuilder {
         args.add("-m");
         args.add(pid + "");
 
-        if (pin == Boolean.TRUE) args.add("-p");
+        if (pin) args.add("-p");
+
+        if (visible) args.add("-v");
 
         if (icon != null) {
             args.add("-i");
