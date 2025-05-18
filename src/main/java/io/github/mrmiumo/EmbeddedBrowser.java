@@ -68,8 +68,8 @@ public class EmbeddedBrowser {
      * Force this browser to terminate now.
      */
     public void stop() {
-        process.destroyForcibly();
         try {
+            process.destroyForcibly().waitFor();
             ipc.close();
         } catch (Exception e) {
             logger.error("Unexpected error while closing IPC: " + e);
