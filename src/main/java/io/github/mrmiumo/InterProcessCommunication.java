@@ -231,17 +231,22 @@ class InterProcessCommunication implements AutoCloseable {
     
     public static void main(String[] args) throws Exception {
 
-        var workingDir = Path.of("C:/Users/aurel/Documents/MineDisney/Code/EmbeddedBrowser");
+        var workingDir = Path.of("").toAbsolutePath();
         var manager = EmbeddedBrowserManager.getManager(workingDir, new SysOutLogger());
 
         var browser = manager.newWindow("Test IPC", "https://google.fr")
             .setMinSize(new Size(680, 320))
             .setSize(new Size(680, 320))
+            .setDecorated(true)
             .setVisible(true)
             .start();
         System.out.println("IPC ready: " + browser.waitForReady(10000));
-        
+        var screen = browser.getScreenSize().orElse(new Size(1920, 1080));
+        var size = browser.getSize().orElse(new Size(0, 0));
+        browser.setPosition(new Position(screen.width() - size.width(), 0));
+
         Thread.sleep(5000);
+
         var last = "";
         var count = 0;
         while (browser.isAlive()) {

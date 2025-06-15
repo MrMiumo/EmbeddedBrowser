@@ -28,11 +28,20 @@ public class EmbeddedBrowserBuilder {
     /** Whether or not to display the window always on top */
     private boolean pin = false;
 
+    /** Whether or not to display the window decorations */
+    private boolean decorated = true;
+
     /** Whether or not to display the window */
     private boolean visible = true;
 
+    /** Whether or not to display the icon in the taskbar */
+    private boolean taskbar = true;
+
     /** Path of the icon of the browser */
     private Path icon;
+
+    /** Position in pixels of the window */
+    private Position position = null;
 
     /** Size in pixels of the window */
     private Size size = new Size(1100, 600);
@@ -63,6 +72,18 @@ public class EmbeddedBrowserBuilder {
     }
 
     /**
+     * Display or not the window decoration (top bar with the title
+     * and the buttons). Note that an undecorated window may be
+     * non-closable and non-draggable by the user.
+     * @param decorated true to decorate the window
+     * @return this builder
+     */
+    public EmbeddedBrowserBuilder setDecorated(boolean decorated) {
+        this.decorated = decorated;
+        return this;
+    }
+
+    /**
      * Display the window or not.
      * Default value: true
      * @param visible true to make the window visible
@@ -70,6 +91,18 @@ public class EmbeddedBrowserBuilder {
      */
     public EmbeddedBrowserBuilder setVisible(boolean visible) {
         this.visible = visible;
+        return this;
+    }
+
+
+    /**
+     * Display the application icon in the taskbar or not.
+     * Default value: true
+     * @param show true to make the icon visible
+     * @return this builder
+     */
+    public EmbeddedBrowserBuilder showInTaskbar(boolean show) {
+        this.taskbar = show;
         return this;
     }
 
@@ -85,6 +118,19 @@ public class EmbeddedBrowserBuilder {
             throw new IllegalArgumentException("Icon must be a PNG file");
         }
         this.icon = icon;
+        return this;
+    }
+
+    /**
+     * Sets the position of the browser window.
+     * Be careful: the position may leads the window to go outside the
+     * screen! 
+     * @param x the x coordinate of the window in pixels
+     * @param y the y of the window in pixels
+     * @return this builder
+     */
+    public EmbeddedBrowserBuilder setPosition(int x, int y) {
+        position = new Position(x, y);
         return this;
     }
 
@@ -182,14 +228,20 @@ public class EmbeddedBrowserBuilder {
         args.add("-m");
         args.add(pid + "");
 
-        if (pin) args.add("-p");
+        if (pin) args.add("-a");
+
+        if (decorated) args.add("-d");
 
         if (visible) args.add("-v");
+
+        if (!taskbar) args.add("-tb");
 
         if (icon != null) {
             args.add("-i");
             args.add(icon.toAbsolutePath().toString());
         }
+
+        if (position != null) args.add("-p " + position);
 
         args.add("-s");
         args.add(size.width() + "");
@@ -207,7 +259,7 @@ public class EmbeddedBrowserBuilder {
             args.add(minSize.height() + "");
         }
 
-        var browser = manager.newWindow(args);
+        var browser = manager.newWindow(title, args);
         assertSize(browser, size);
         return browser;
     }

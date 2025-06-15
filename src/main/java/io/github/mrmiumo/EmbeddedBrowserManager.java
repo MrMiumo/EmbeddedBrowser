@@ -75,7 +75,7 @@ public class EmbeddedBrowserManager implements AutoCloseable {
      * Starts the embedded browser.
      * @return the window, or null in case of failure
      */
-    EmbeddedBrowser newWindow(List<String> args) {
+    EmbeddedBrowser newWindow(String title, List<String> args) {
         deployer.deploy();
         try {
             var ipc = InterProcessCommunication.from(workingDirectory);
@@ -83,15 +83,15 @@ public class EmbeddedBrowserManager implements AutoCloseable {
             arguments.add(ipc.getPath().toAbsolutePath().toString());
             arguments.addAll(args);
             var window = new EmbeddedBrowser(deployer.newInstance(arguments.toArray(String[]::new)), ipc);
-            logger.info("Embedded Browser started");
+            logger.info("Embedded Browser '" + title + "'' started");
             instances.offer(window);
             window.onExit(p -> {
-                logger.info("Embedded Browser closed");
+                logger.info("Embedded Browser '" + title + "'' closed");
                 instances.remove(window);
             });
             return window;
         } catch (IOException e) {
-            logger.error("Failed to start Embedded Browser: " + e);
+            logger.error("Failed to start Embedded Browser '" + title + "': " + e);
             return null;
         }
     }

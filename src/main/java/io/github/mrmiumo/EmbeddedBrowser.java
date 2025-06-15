@@ -125,12 +125,26 @@ public class EmbeddedBrowser {
     }
 
     /**
+     * Obtains the dimensions of the current monitor
+     * @return the size of the screen
+     */
+    public Optional<Size> getScreenSize() {
+        if (onExitSize != null) return Optional.of(onExitSize);
+        try {
+            return Size.from(ipc.query("-gss"));
+        } catch (IOException e) {
+            logger.error("Failed to get screen size: " + e);
+            return Optional.empty();
+        }
+    }
+
+    /**
      * Pin the window always on top of other windows.
      * @return false in case of failure, true otherwise
      */
     public boolean pin() {
         try {
-            return isOk(ipc.query("-p true"));
+            return isOk(ipc.query("-a true"));
         } catch (IOException e) {
             logger.error("Failed to pin window: " + e);
             return false;
@@ -144,9 +158,38 @@ public class EmbeddedBrowser {
      */
     public boolean unpin() {
         try {
-            return isOk(ipc.query("-p false"));
+            return isOk(ipc.query("-a false"));
         } catch (IOException e) {
             logger.error("Failed to pin window: " + e);
+            return false;
+        }
+    }
+
+    /**
+     * Enable or disables window decoration (top bar with title and
+     * buttons).
+     * @param decorated true to show the decorations, false otherwise
+     * @return false in case of failure, true otherwise
+     */
+    public boolean setDecorated(boolean decorated) {
+        try {
+            return isOk(ipc.query("-d " + decorated));
+        } catch (IOException e) {
+            logger.error("Failed to decorate window: " + e);
+            return false;
+        }
+    }
+
+    /**
+     * Enable or disables the application icon in the taskbar.
+     * @param show true to show the icon, false otherwise
+     * @return false in case of failure, true otherwise
+     */
+    public boolean showInTaskbar(boolean show) {
+        try {
+            return isOk(ipc.query("-tb " + show));
+        } catch (IOException e) {
+            logger.error("Failed to update visibility in taskbar: " + e);
             return false;
         }
     }
@@ -188,7 +231,7 @@ public class EmbeddedBrowser {
         try {
             return isOk(ipc.query("-t \"" + title + "\""));
         } catch (IOException e) {
-            logger.error("Failed to pin window: " + e);
+            logger.error("Failed to window title: " + e);
             return false;
         }
     }
@@ -231,6 +274,22 @@ public class EmbeddedBrowser {
             return isOk(ipc.query("-s " + size));
         } catch (IOException e) {
             logger.error("Failed to change window size: " + e);
+            return false;
+        }
+    }
+
+    /**
+     * Move the browser window to the given position.
+     * Be careful: the position may leads the window to go outside the
+     * screen! 
+     * @param position the new coordinates of the window
+     * @return false in case of failure, true otherwise
+     */
+    public boolean setPosition(Position position) {
+        try {
+            return isOk(ipc.query("-p " + position));
+        } catch (IOException e) {
+            logger.error("Failed to change window position: " + e);
             return false;
         }
     }
