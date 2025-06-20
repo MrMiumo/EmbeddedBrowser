@@ -34,6 +34,9 @@ public class EmbeddedBrowserBuilder {
     /** Whether or not to display the window */
     private boolean visible = true;
 
+    /** Whether or not to focus the window at opening */
+    private boolean focused = true;
+
     /** Whether or not to display the icon in the taskbar */
     private boolean taskbar = true;
 
@@ -94,6 +97,18 @@ public class EmbeddedBrowserBuilder {
         return this;
     }
 
+    /**
+     * Make the window focused when it opens or not. A focused window
+     * appears on top of other apps and capture the mouse at its
+     * startup.
+     * Default value: true
+     * @param focused true to make the window focused
+     * @return this builder
+     */
+    public EmbeddedBrowserBuilder setFocused(boolean focused) {
+        this.focused = focused;
+        return this;
+    }
 
     /**
      * Display the application icon in the taskbar or not.
@@ -233,6 +248,8 @@ public class EmbeddedBrowserBuilder {
         if (decorated) args.add("-d");
 
         if (visible) args.add("-v");
+
+        if (focused) args.add("-f");
 
         if (!taskbar) args.add("-tb");
 

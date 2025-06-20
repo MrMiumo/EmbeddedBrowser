@@ -1,6 +1,7 @@
 package io.github.mrmiumo;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -78,6 +79,7 @@ public class EmbeddedBrowserManager implements AutoCloseable {
     EmbeddedBrowser newWindow(String title, List<String> args) {
         deployer.deploy();
         try {
+            if (instances.isEmpty()) cleanIpcFiles();
             var ipc = InterProcessCommunication.from(workingDirectory);
             var arguments = new ArrayList<String>();
             arguments.add(ipc.getPath().toAbsolutePath().toString());
@@ -104,6 +106,7 @@ public class EmbeddedBrowserManager implements AutoCloseable {
         deployer.runIfDeployed(() -> {
             instances.forEach(EmbeddedBrowser::stop);
             deployer.clean();
+            cleanIpcFiles();
         });
     }
 
@@ -123,6 +126,22 @@ public class EmbeddedBrowserManager implements AutoCloseable {
         }
     }
     
+    /**
+     * Deletes any remaining IPC file in the working directory.
+     */
+    private void cleanIpcFiles() {
+        try {
+            var files = Files.list(workingDirectory)
+                .filter(f -> f.toString().endsWith(".ipc"))
+                .toList();
+            for (var file : files) {
+                Files.deleteIfExists(file);
+            }
+        } catch (IOException e) {
+            logger.warn("Failed to clean IPC file: " + e);
+        }
+    }
+
     @Override
     public void close() throws Exception {
         deployer.clean();
