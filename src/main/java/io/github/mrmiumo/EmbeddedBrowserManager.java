@@ -7,6 +7,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 /**
  * Manager that handle embedded browser deploying, window creation and
@@ -76,7 +77,7 @@ public class EmbeddedBrowserManager implements AutoCloseable {
      * Starts the embedded browser.
      * @return the window, or null in case of failure
      */
-    EmbeddedBrowser newWindow(String title, List<String> args) {
+    EmbeddedBrowser newWindow(String title, List<String> args, Consumer<EmbeddedBrowser> exitHook) {
         deployer.deploy();
         try {
             if (instances.isEmpty()) cleanIpcFiles();
@@ -90,6 +91,7 @@ public class EmbeddedBrowserManager implements AutoCloseable {
             window.onExit(p -> {
                 logger.info("Embedded Browser '" + title + "'' closed");
                 instances.remove(window);
+                exitHook.accept(window);
             });
             return window;
         } catch (IOException e) {

@@ -4,6 +4,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 /**
  * Builder used to configure EmbeddedBrowser window.
@@ -54,6 +55,9 @@ public class EmbeddedBrowserBuilder {
 
     /** Minimal allowed size of the window */
     private Size minSize;
+
+    /** Optional function that is called when the browser is closed */
+    private Consumer<EmbeddedBrowser> exitHook = e -> {};
 
     EmbeddedBrowserBuilder(EmbeddedBrowserManager manager, BasicLogger logger, String title, String url) {
         this.manager = Objects.requireNonNull(manager);
@@ -227,6 +231,18 @@ public class EmbeddedBrowserBuilder {
     }
 
     /**
+     * Sets a function that will be called when this EmbeddedBrowser
+     * will exit (crash or window close).
+     * By default, no callback is set.
+     * @param exitHook the function to be called
+     * @return this builder
+     */
+    public EmbeddedBrowserBuilder setExitHook(Consumer<EmbeddedBrowser> exitHook) {
+        this.exitHook = Objects.requireNonNull(exitHook);
+        return this;
+    }
+
+    /**
      * Opens a new window configured with the previously given values.
      * @return the browser object linked with the window
      */
@@ -276,7 +292,7 @@ public class EmbeddedBrowserBuilder {
             args.add(minSize.height() + "");
         }
 
-        var browser = manager.newWindow(title, args);
+        var browser = manager.newWindow(title, args, exitHook);
         assertSize(browser, size);
         return browser;
     }
