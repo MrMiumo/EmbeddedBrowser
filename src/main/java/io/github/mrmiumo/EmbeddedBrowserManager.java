@@ -104,7 +104,7 @@ public class EmbeddedBrowserManager implements AutoCloseable {
      */
     public void stopAll() {
         deployer.runIfDeployed(() -> {
-            instances.forEach(EmbeddedBrowser::stop);
+            for (var instance : instances) instance.stop();
             deployer.clean();
             cleanIpcFiles();
         });
