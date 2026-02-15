@@ -1,66 +1,96 @@
 package io.github.mrmiumo;
 
 import java.io.IOException;
-import java.nio.file.Path;
-import java.util.Optional;
+import java.io.InputStream;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
+
+import com.sun.jna.Library;
+import com.sun.jna.Native;
+
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.SWTError;
+import org.eclipse.swt.browser.Browser;
+import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.Point;
+import org.eclipse.swt.internal.win32.OS;
+import org.eclipse.swt.layout.FillLayout;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Shell;
 
 /**
- * Java-side representation of the browser's window to manipulate it.
- * @author Miumo
+ * Enable to create new windows, customize and manipulate them.
+ * @author MrMiumo
  */
 public class EmbeddedBrowser {
 
-    /** Logger of the browser */
-    private final BasicLogger logger;
+    /** Handle to the window */
+    private final Display display;
 
-    /** Parent process of the browser */
-    private final Process process;
+    /** Handle to the window */
+    private final Shell shell;
 
-    /** Channel to communicate with the browser */
-    private final InterProcessCommunication ipc;
-
-    /** Saved size when the window was closed */
-    private Size onExitSize = null;
+    /** Handle to browser inside the window */
+    private final Browser browser;
 
     /**
-     * Creates a new Browser that uses the given directory to deploy
-     * the app while it's working.
-     * @param process the started process holding the browser
-     * @param ipc channel setup correctly to discuss with the window
-     * @throws IOException if the IPC failed to be created
+     * 
+     * Creates a new Window that only contains a web browser using the
+     * Windows WebView (Edge).
+     * @param name the name of the window to create<br>
+     *     /!\ Only used internally, see {@link #setTitle(String)} for the window title)
+     * @param decorated true for a classic window, false to hide title
+     *     bar and borders
+     * @return the new Window (hidden)
+     * @throws SWTError if a handle could not be obtained for browser
+     *     creation
      */
-    EmbeddedBrowser(Process process, InterProcessCommunication ipc) throws IOException {
-        this(process, ipc, new SysOutLogger());
+    public static EmbeddedBrowser create(String name, boolean decorated) throws SWTError {
+        Kernel32.INSTANCE.SetEnvironmentVariableA("WEBVIEW2_DEFAULT_BACKGROUND_COLOR", "0");
+        var future = new CompletableFuture<EmbeddedBrowser>();
+        var thread = new Thread(() -> {
+            var window = new EmbeddedBrowser(decorated);
+            future.complete(window);
+            while (!window.shell.isDisposed()) {
+                if (!window.display.readAndDispatch()) window.display.sleep();
+            }
+        });
+        thread.setDaemon(true);
+        thread.setName("UIthread - " + name);
+        thread.start();
+        try {
+            return future.get();
+        } catch (InterruptedException|ExecutionException e) {
+            throw new IllegalStateException("Failed to start window", e);
+        }
     }
 
     /**
-     * Creates a new Browser that uses the given directory to deploy
+     * Creates a new Window that uses the given directory to deploy
      * the app while it's working.
-     * @param process the started process holding the browser
-     * @param ipc channel setup correctly to discuss with the window
-     * @param logger the logger (non null) to print debug stuff
-     * @throws IOException if the IPC failed to be created
+     * @param decorated true for a classic window, false to hide title
+     *     bar and borders
+     * @throws SWTError if a handle could not be obtained for browser
+     *     creation
      */
-    EmbeddedBrowser(Process process, InterProcessCommunication ipc, BasicLogger logger) throws IOException {
-        this.logger = logger;
-        this.process = process;
-        this.ipc = ipc;
+    private EmbeddedBrowser(boolean decorated) throws SWTError {
+        display = new Display();
+        OS.setTheme(true);
+        shell = new Shell(display, decorated ? SWT.SHELL_TRIM : SWT.TOOL | SWT.NO_TRIM | SWT.NO_BACKGROUND);
+        shell.setLayout(new FillLayout());
+        browser = new Browser(shell, SWT.EDGE | SWT.TRANSPARENT);
+        shell.setVisible(false);
     }
 
     /**
      * Run an action when the process exit (expected stop or not)
      * @param action the action to run
      */
-    void onExit(Consumer<? super Process> action) {
-        process.onExit().thenAccept(p -> {
-            try {
-                onExitSize = Size.from(ipc.read()).orElse(null);
-                ipc.close();
-            } catch (Exception e) {
-                logger.error("Unexpected error while closing IPC: " + e);
-            }
-            action.accept(p);
+    public EmbeddedBrowser onExit(Consumer<Point> action) {
+        return exec(() -> {
+            shell.addListener(SWT.Dispose, e -> action.accept(shell.getSize()));
         });
     }
 
@@ -68,23 +98,9 @@ public class EmbeddedBrowser {
      * Force this browser to terminate now.
      */
     public void stop() {
-        try {
-            process.destroyForcibly().waitFor();
-            ipc.close();
-        } catch (Exception e) {
-            logger.error("Unexpected error while closing IPC: " + e);
-        }
-    }
-
-    /**
-     * Blocking method that wait for the window to be ready.
-     * @param timeoutMillis the number of milliseconds to wait before
-     *     canceling the wait.
-     * @return true if the window is ready (useful to see if the timeout
-     *     was used or not)
-     */
-    public boolean waitForReady(long timeoutMillis) {
-       return ipc.waitForReady(timeoutMillis);
+        exec(() -> {
+            if (!shell.isDisposed()) shell.dispose();
+        });
     }
 
     /**
@@ -92,214 +108,187 @@ public class EmbeddedBrowser {
      * @return true if alive, false if terminated
      */
     public boolean isAlive() {
-        return process.isAlive();
+        return exec(() -> !shell.isDisposed());
+    }
+
+    /**
+     * Pin the window always on top of other windows.
+     * @return this window
+     */
+    public EmbeddedBrowser pin() {
+        return exec(() -> {
+            OS.SetWindowPos(
+                shell.handle,
+                OS.HWND_TOPMOST,
+                0, 0, 0, 0,
+                OS.SWP_NOMOVE | OS.SWP_NOSIZE
+            );
+        });
+    }
+
+    /**
+     * Unpin the window so that is no longer is always on top of other
+     * windows. This will have no effect if the window was not pinned.
+     * @return this window
+     */
+    public EmbeddedBrowser unpin() {
+        return exec(() -> {
+            OS.SetWindowPos(
+                shell.handle,
+                OS.HWND_NOTOPMOST,
+                0, 0, 0, 0,
+                OS.SWP_NOMOVE | OS.SWP_NOSIZE
+            );
+        });
+    }
+
+    /**
+     * Make the window visible.
+     * This will have no effect if the window was already visible.
+     * @return this window
+     */
+    public EmbeddedBrowser show() {
+        return exec(() -> shell.setVisible(true));
+    }
+
+    /**
+     * Make the window invisible (even in the task bar).
+     * This will have no effect if the window was already hidden.
+     * @return this window
+     */
+    public EmbeddedBrowser hide() {
+        return exec(() -> shell.setVisible(false));
     }
 
     /**
      * Obtains the currently set title of the window.
-     * @return the title of the window, empty if an error occurred
-     *     (because the browser is not ready yet or if any IOException
-     *     is thrown while communicating with the browser's process)
+     * @return the title of the window
      */
-    public Optional<String> getTitle() {
-        try {
-            return Optional.ofNullable(ipc.query("-gt"));
-        } catch (IOException e) {
-            logger.error("Failed to get window title: " + e);
-            return Optional.empty();
-        }
+    public String getTitle() {
+        return exec(() -> shell.getText());
     }
 
     /**
-     * Obtains the dimensions of the current window
-     * @return the size of the window
+     * Changes the title of the window
+     * @param title the new name of the window
+     * @return this window
      */
-    public Optional<Size> getSize() {
-        if (onExitSize != null) return Optional.of(onExitSize);
-        try {
-            return Size.from(ipc.query("-gs"));
-        } catch (IOException e) {
-            logger.error("Failed to get window size: " + e);
-            return Optional.empty();
-        }
+    public EmbeddedBrowser setTitle(String title) {
+        return exec(() -> shell.setText(title));
+    }
+
+    /**
+     * Changes the URL displayed by the browser
+     * @param url the new url starting with "http://" or "https://"
+     * @return this window
+     */
+    public EmbeddedBrowser setUrl(String url) {
+        return exec(() -> {
+            browser.setUrl(url);
+        });
+    }
+
+    /**
+     * Changes the icon of the browser window
+     * @param icon the PNG file to set as icon
+     * @return this window
+     * @throws IOException in case of error while reading the file
+     */
+    public EmbeddedBrowser setIcon(InputStream icon) {
+        return exec(() -> shell.setImage(new Image(display, icon)));
     }
 
     /**
      * Obtains the dimensions of the current monitor
      * @return the size of the screen
      */
-    public Optional<Size> getScreenSize() {
-        if (onExitSize != null) return Optional.of(onExitSize);
-        try {
-            return Size.from(ipc.query("-gss"));
-        } catch (IOException e) {
-            logger.error("Failed to get screen size: " + e);
-            return Optional.empty();
-        }
+    public Point getScreenSize() {
+        var screen = exec(() -> display.getPrimaryMonitor().getBounds());
+        return new Point(screen.width, screen.height);
     }
 
     /**
-     * Pin the window always on top of other windows.
-     * @return false in case of failure, true otherwise
+     * Obtains the dimensions of the current window
+     * @return the size of the window
      */
-    public boolean pin() {
-        try {
-            return isOk(ipc.query("-a true"));
-        } catch (IOException e) {
-            logger.error("Failed to pin window: " + e);
-            return false;
-        }
-    }
-
-    /**
-     * Unpin the window so that is no longer is always on top of other
-     * windows. This will have no effect if the window was not pinned.
-     * @return false in case of failure, true otherwise
-     */
-    public boolean unpin() {
-        try {
-            return isOk(ipc.query("-a false"));
-        } catch (IOException e) {
-            logger.error("Failed to pin window: " + e);
-            return false;
-        }
-    }
-
-    /**
-     * Enable or disables window decoration (top bar with title and
-     * buttons).
-     * @param decorated true to show the decorations, false otherwise
-     * @return false in case of failure, true otherwise
-     */
-    public boolean setDecorated(boolean decorated) {
-        try {
-            return isOk(ipc.query("-d " + decorated));
-        } catch (IOException e) {
-            logger.error("Failed to decorate window: " + e);
-            return false;
-        }
-    }
-
-    /**
-     * Enable or disables the application icon in the taskbar.
-     * @param show true to show the icon, false otherwise
-     * @return false in case of failure, true otherwise
-     */
-    public boolean showInTaskbar(boolean show) {
-        try {
-            return isOk(ipc.query("-tb " + show));
-        } catch (IOException e) {
-            logger.error("Failed to update visibility in taskbar: " + e);
-            return false;
-        }
-    }
-
-    /**
-     * Make the window visible.
-     * This will have no effect if the window was already visible.
-     * @return false in case of failure, true otherwise
-     */
-    public boolean show() {
-        try {
-            return isOk(ipc.query("-v true"));
-        } catch (IOException e) {
-            logger.error("Failed to show window: " + e);
-            return false;
-        }
-    }
-
-    /**
-     * Make the window invisible (even in the task bar).
-     * This will have no effect if the window was already hidden.
-     * @return false in case of failure, true otherwise
-     */
-    public boolean hide() {
-        try {
-            return isOk(ipc.query("-v false"));
-        } catch (IOException e) {
-            logger.error("Failed to hide window: " + e);
-            return false;
-        }
-    }
-
-    /**
-     * Changes the title of this browser window
-     * @param title the new name of the window
-     * @return false in case of failure, true otherwise
-     */
-    public boolean setTitle(String title) {
-        try {
-            return isOk(ipc.query("-t \"" + title + "\""));
-        } catch (IOException e) {
-            logger.error("Failed to window title: " + e);
-            return false;
-        }
-    }
-
-    /**
-     * Changes the URL displayed by the browser
-     * @param url the new url starting with "http://" or "https://"
-     * @return false in case of failure, true otherwise
-     */
-    public boolean setUrl(String url) {
-        try {
-            return isOk(ipc.query("-u \"" + url + "\""));
-        } catch (IOException e) {
-            logger.error("Failed to change window url: " + e);
-            return false;
-        }
-    }
-
-    /**
-     * Changes the icon of the browser window
-     * @param icon the path to an existing PNG file
-     * @return false in case of failure, true otherwise
-     */
-    public boolean setIcon(Path icon) {
-        try {
-            return isOk(ipc.query("-i \"" + icon.toAbsolutePath() + "\""));
-        } catch (IOException e) {
-            logger.error("Failed to change window icon: " + e);
-            return false;
-        }
+    public Point getSize() {
+        return exec(() -> shell.getSize());
     }
 
     /**
      * Resizes the browser window to the given size
      * @param size the width and height of the window to set
-     * @return false in case of failure, true otherwise
+     * @return this window
      */
-    public boolean setSize(Size size) {
-        try {
-            return isOk(ipc.query("-s " + size));
-        } catch (IOException e) {
-            logger.error("Failed to change window size: " + e);
-            return false;
-        }
+    public EmbeddedBrowser setSize(Point size) {
+        return exec(() -> shell.setSize(size));
     }
 
+    /**
+     * Sets the maximal size that the window cannot overpass. If these
+     * values are lower than the one defined with {@link #setSize},
+     * the result will be unknown.
+     * By default, no maximum limit is set.
+     * @param max the maximal width and height of the window in pixels
+     * @return this window
+     */
+    public EmbeddedBrowser setMaxSize(Point max) {
+        return exec(() -> shell.setMaximumSize(max));
+    }
+
+    /**
+     * Sets the minimal size that the window cannot underpass. If these
+     * values are lower than the one defined with {@link #setSize},
+     * the result will be unknown.
+     * By default, no minimum limit is set.
+     * @param size the minimum width and height of the window in pixels
+     * @return this window
+     */
+    public EmbeddedBrowser setMinSize(Point min) {
+        return exec(() -> shell.setMinimumSize(min));
+    }
+    
     /**
      * Move the browser window to the given position.
      * Be careful: the position may leads the window to go outside the
      * screen! 
      * @param position the new coordinates of the window
-     * @return false in case of failure, true otherwise
+     * @return this window
      */
-    public boolean setPosition(Position position) {
-        try {
-            return isOk(ipc.query("-p " + position));
-        } catch (IOException e) {
-            logger.error("Failed to change window position: " + e);
-            return false;
-        }
+    public EmbeddedBrowser setPosition(Point position) {
+        return exec(() -> shell.setLocation(position));
     }
 
     /**
-     * Tests if the given string is OK or not.
-     * @param s the string to check
-     * @return true if OK, false otherwise
+     * Run some code that modifies the window on the UI thread.
+     * @param action the code to run
+     * @return this window
      */
-    private boolean isOk(String s) {
-        return s != null && "OK".equals(s);
+    private EmbeddedBrowser exec(Runnable action) {
+        display.syncExec(action);
+        return this;
+    }
+
+    /**
+     * Run some code that modifies the window on the UI thread and gets
+     * the return value
+     * @param action the code to run
+     * @return the return value of the given action
+     */
+    private <T> T exec(Supplier<T> action) {
+        var response =  new Object(){
+            T value = null;
+        };
+        display.syncExec(() -> response.value = action.get());
+        return response.value;
+    }
+
+    /**
+     * Allows to have transparent browser
+     */
+    interface Kernel32 extends Library {
+        Kernel32 INSTANCE = Native.load("kernel32", Kernel32.class);
+        boolean SetEnvironmentVariableA(String lpName, String lpValue);
     }
 }
+
