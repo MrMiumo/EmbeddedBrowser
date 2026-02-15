@@ -1,6 +1,5 @@
 package io.github.mrmiumo;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -37,13 +36,13 @@ public class EmbeddedBrowser {
 
     /**
      * 
-     * Creates a new Window that only contains a web browser using the
+     * Creates a new EmbeddedBrowser that only contains a web browser using the
      * Windows WebView (Edge).
      * @param name the name of the window to create<br>
      *     /!\ Only used internally, see {@link #setTitle(String)} for the window title)
      * @param decorated true for a classic window, false to hide title
      *     bar and borders
-     * @return the new Window (hidden)
+     * @return the new EmbeddedBrowser (hidden)
      * @throws SWTError if a handle could not be obtained for browser
      *     creation
      */
@@ -68,7 +67,7 @@ public class EmbeddedBrowser {
     }
 
     /**
-     * Creates a new Window that uses the given directory to deploy
+     * Creates a new EmbeddedBrowser that uses the given directory to deploy
      * the app while it's working.
      * @param decorated true for a classic window, false to hide title
      *     bar and borders
@@ -87,6 +86,7 @@ public class EmbeddedBrowser {
     /**
      * Run an action when the process exit (expected stop or not)
      * @param action the action to run
+     * @return this browser
      */
     public EmbeddedBrowser onExit(Consumer<Point> action) {
         return exec(() -> {
@@ -104,7 +104,7 @@ public class EmbeddedBrowser {
     }
 
     /**
-     * Checks if this window of the embedded browser is still alive
+     * Checks if this embedded browser is still alive or have been closed
      * @return true if alive, false if terminated
      */
     public boolean isAlive() {
@@ -113,7 +113,7 @@ public class EmbeddedBrowser {
 
     /**
      * Pin the window always on top of other windows.
-     * @return this window
+     * @return this browser
      */
     public EmbeddedBrowser pin() {
         return exec(() -> {
@@ -129,7 +129,7 @@ public class EmbeddedBrowser {
     /**
      * Unpin the window so that is no longer is always on top of other
      * windows. This will have no effect if the window was not pinned.
-     * @return this window
+     * @return this browser
      */
     public EmbeddedBrowser unpin() {
         return exec(() -> {
@@ -145,7 +145,7 @@ public class EmbeddedBrowser {
     /**
      * Make the window visible.
      * This will have no effect if the window was already visible.
-     * @return this window
+     * @return this browser
      */
     public EmbeddedBrowser show() {
         return exec(() -> shell.setVisible(true));
@@ -154,7 +154,7 @@ public class EmbeddedBrowser {
     /**
      * Make the window invisible (even in the task bar).
      * This will have no effect if the window was already hidden.
-     * @return this window
+     * @return this browser
      */
     public EmbeddedBrowser hide() {
         return exec(() -> shell.setVisible(false));
@@ -171,7 +171,7 @@ public class EmbeddedBrowser {
     /**
      * Changes the title of the window
      * @param title the new name of the window
-     * @return this window
+     * @return this browser
      */
     public EmbeddedBrowser setTitle(String title) {
         return exec(() -> shell.setText(title));
@@ -180,7 +180,7 @@ public class EmbeddedBrowser {
     /**
      * Changes the URL displayed by the browser
      * @param url the new url starting with "http://" or "https://"
-     * @return this window
+     * @return this browser
      */
     public EmbeddedBrowser setUrl(String url) {
         return exec(() -> {
@@ -191,8 +191,7 @@ public class EmbeddedBrowser {
     /**
      * Changes the icon of the browser window
      * @param icon the PNG file to set as icon
-     * @return this window
-     * @throws IOException in case of error while reading the file
+     * @return this browser
      */
     public EmbeddedBrowser setIcon(InputStream icon) {
         return exec(() -> shell.setImage(new Image(display, icon)));
@@ -218,7 +217,7 @@ public class EmbeddedBrowser {
     /**
      * Resizes the browser window to the given size
      * @param size the width and height of the window to set
-     * @return this window
+     * @return this browser
      */
     public EmbeddedBrowser setSize(Point size) {
         return exec(() -> shell.setSize(size));
@@ -230,7 +229,7 @@ public class EmbeddedBrowser {
      * the result will be unknown.
      * By default, no maximum limit is set.
      * @param max the maximal width and height of the window in pixels
-     * @return this window
+     * @return this browser
      */
     public EmbeddedBrowser setMaxSize(Point max) {
         return exec(() -> shell.setMaximumSize(max));
@@ -241,8 +240,8 @@ public class EmbeddedBrowser {
      * values are lower than the one defined with {@link #setSize},
      * the result will be unknown.
      * By default, no minimum limit is set.
-     * @param size the minimum width and height of the window in pixels
-     * @return this window
+     * @param min the minimum width and height of the window in pixels
+     * @return this browser
      */
     public EmbeddedBrowser setMinSize(Point min) {
         return exec(() -> shell.setMinimumSize(min));
@@ -253,7 +252,7 @@ public class EmbeddedBrowser {
      * Be careful: the position may leads the window to go outside the
      * screen! 
      * @param position the new coordinates of the window
-     * @return this window
+     * @return this browser
      */
     public EmbeddedBrowser setPosition(Point position) {
         return exec(() -> shell.setLocation(position));
@@ -262,7 +261,7 @@ public class EmbeddedBrowser {
     /**
      * Run some code that modifies the window on the UI thread.
      * @param action the code to run
-     * @return this window
+     * @return this browser
      */
     private EmbeddedBrowser exec(Runnable action) {
         display.syncExec(action);

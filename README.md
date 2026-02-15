@@ -9,6 +9,19 @@ Customizable, lightweight and 100% Java based desktop app with fancy GUI using c
 
 ## 🚀 Quick Start
 
+Add the following dependency to your Maven POM:
+```xml
+<dependency>
+    <groupId>io.github.mrmiumo</groupId>
+    <artifactId>embeddedbrowser</artifactId>
+    <version>2.0.0</version>
+</dependency>
+```
+> 💡 **Gradle** and other build tools available on the [Maven repository](https://mvnrepository.com/artifact/io.github.mrmiumo/embeddedbrowser/1.0.6)!
+
+<br>
+
+Then, in you Java class, create a show a new window:
 ```java
 // Creates and config the window with custom icon, title and size
 InputStream icon = MyApp.class.getResourceAsStream("/logo.png");
